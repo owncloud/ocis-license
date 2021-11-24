@@ -10,10 +10,15 @@ import (
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"encoding/pem"
+	"errors"
 	"io"
 	"math/big"
 	"os"
 	"time"
+)
+
+var (
+	errInvalidContent = errors.New("invalid content")
 )
 
 // GenerateRootCA generates a new ed25519 keypair and returns a self signed
@@ -117,10 +122,8 @@ func WritePrivateKeyFile(key ed25519.PrivateKey, path string) error {
 
 // WritePrivateKey pem encodes the private key and writes it to dst.
 func WritePrivateKey(key ed25519.PrivateKey, dst io.Writer) error {
-	b, err := x509.MarshalPKCS8PrivateKey(key)
-	if err != nil {
-		return err
-	}
+	// We can safely ignore the error here since we know that we pass in a ed25519.PrivateKey
+	b, _ := x509.MarshalPKCS8PrivateKey(key)
 	return pem.Encode(dst, &pem.Block{
 		Type:  "PRIVATE KEY",
 		Bytes: b,
@@ -143,6 +146,9 @@ func ReadCertificate(r io.Reader) (*x509.Certificate, error) {
 		return nil, err
 	}
 	p, _ := pem.Decode(buf.Bytes())
+	if p == nil {
+		return nil, errInvalidContent
+	}
 
 	crt, err := x509.ParseCertificate(p.Bytes)
 	if err != nil {
@@ -167,6 +173,9 @@ func ReadPrivateKey(r io.Reader) (ed25519.PrivateKey, error) {
 		return nil, err
 	}
 	pKey, _ := pem.Decode(buf.Bytes())
+	if pKey == nil {
+		return nil, errInvalidContent
+	}
 
 	privkey, err := x509.ParsePKCS8PrivateKey(pKey.Bytes)
 	if err != nil {
