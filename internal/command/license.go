@@ -54,19 +54,23 @@ func createLicenseSubcommand() *cli.Command {
 				return err
 			}
 
-			payload := license.NewPayload()
 			id, err := uuid.NewUUID()
 			if err != nil {
 				return err
 			}
-			payload.ID = id.String()
-			payload.Created = time.Now()
-			payload.Environment = "development"
-			payload.Type = "non-commercial"
-
 			l := license.License{
-				Header:  license.Header{Version: "1"},
-				Payload: payload,
+				Header: license.Header{Version: "1"},
+				Payload: license.Payload{
+					ID:          id.String(),
+					Created:     time.Now(),
+					Environment: "development",
+					Type:        "non-commercial",
+					Features: []string{
+						"core",
+						"thumbnails",
+						"reports",
+					},
+				},
 			}
 
 			err = license.Sign(&l, *signingCert, signingKey)
