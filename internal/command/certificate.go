@@ -1,7 +1,9 @@
 package command
 
 import (
+	"crypto/rand"
 	"fmt"
+	"math/big"
 	"time"
 
 	"github.com/owncloud/ocis-license/internal/crypto"
@@ -60,7 +62,7 @@ func createCertSubCommand() *cli.Command {
 			)
 			switch profile {
 			case profileRootCa:
-				crt, privkey, err := crypto.GenerateRootCA(subject, subject)
+				crt, privkey, err := crypto.GenerateRootCA(subject)
 				if err != nil {
 					return err
 				}
@@ -88,7 +90,11 @@ func createCertSubCommand() *cli.Command {
 					return err
 				}
 
-				crt, privkey, err := crypto.GenerateIntermediateCA(subject, subject, time.Now(), time.Now().AddDate(10, 0, 0), *parentCrt, parentPrivKey)
+				serialNumber, err := rand.Int(rand.Reader, big.NewInt(2^63))
+				if err != nil {
+					return err
+				}
+				crt, privkey, err := crypto.GenerateIntermediateCA(*serialNumber, subject, subject, time.Now(), time.Now().AddDate(2, 0, 0), *parentCrt, parentPrivKey)
 				if err != nil {
 					return err
 				}

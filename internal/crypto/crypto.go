@@ -1,3 +1,6 @@
+// Package crypto provides utility functions for
+// generating and handling certificates and key pairs.
+//
 package crypto
 
 import (
@@ -13,14 +16,23 @@ import (
 	"time"
 )
 
-func GenerateRootCA(issuer, subject string) ([]byte, ed25519.PrivateKey, error) {
+// GenerateRootCA generates a new ed25519 keypair and returns a self signed
+// certificate and the private key.
+//
+// If the generation of the keypair or the creation of the certificate fails
+// an error is returned.
+//
+// The generated certificate has the serial number '1' and is valid for 10 years.
+func GenerateRootCA(subject string) ([]byte, ed25519.PrivateKey, error) {
+	notBefore := time.Now()
 	crt := &x509.Certificate{
 		SerialNumber: big.NewInt(1),
 		Subject: pkix.Name{
 			CommonName: subject,
 		},
-		ExtKeyUsage:           []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth, x509.ExtKeyUsageServerAuth},
-		KeyUsage:              x509.KeyUsageDigitalSignature | x509.KeyUsageCertSign,
+		NotBefore:             notBefore,
+		NotAfter:              notBefore.AddDate(10, 0, 0),
+		KeyUsage:              x509.KeyUsageDigitalSignature | x509.KeyUsageCertSign | x509.KeyUsageCRLSign,
 		BasicConstraintsValid: true,
 		IsCA:                  true,
 	}
@@ -38,17 +50,23 @@ func GenerateRootCA(issuer, subject string) ([]byte, ed25519.PrivateKey, error) 
 	return caBytes, privkey, nil
 }
 
-func GenerateIntermediateCA(issuer, subject string, notBefore, notAfter time.Time, parentCrt x509.Certificate, parentPrivKey ed25519.PrivateKey) ([]byte, ed25519.PrivateKey, error) {
+// GenerateIntermediateCA generates a new ed25519 keypair and returns a
+// certificate signed by the provided parent.
+//
+// If the generation of the keypair or the creation of the certificate fails
+// an error is returned.
+func GenerateIntermediateCA(serialNumber big.Int, issuer, subject string, notBefore, notAfter time.Time, parentCrt x509.Certificate, parentPrivKey ed25519.PrivateKey) ([]byte, ed25519.PrivateKey, error) {
 	crt := &x509.Certificate{
-		// TODO(corby): the combination of issuer + serial number must be unique.
-		SerialNumber: big.NewInt(209),
+		SerialNumber: &serialNumber,
+		Issuer: pkix.Name{
+			CommonName: issuer,
+		},
 		Subject: pkix.Name{
-			Organization: []string{subject},
+			CommonName: subject,
 		},
 		NotBefore:             notBefore,
 		NotAfter:              notAfter,
-		ExtKeyUsage:           []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth, x509.ExtKeyUsageServerAuth},
-		KeyUsage:              x509.KeyUsageDigitalSignature,
+		KeyUsage:              x509.KeyUsageDigitalSignature | x509.KeyUsageCertSign | x509.KeyUsageCRLSign,
 		IsCA:                  true,
 		BasicConstraintsValid: true,
 	}
@@ -66,6 +84,7 @@ func GenerateIntermediateCA(issuer, subject string, notBefore, notAfter time.Tim
 	return caBytes, privkey, nil
 }
 
+// WriteCertificateFile pem encodes the certificate and writes it to the path.
 func WriteCertificateFile(crt []byte, path string) error {
 	file, err := os.Create(path)
 	if err != nil {
@@ -76,6 +95,7 @@ func WriteCertificateFile(crt []byte, path string) error {
 	return WriteCertificate(crt, file)
 }
 
+// WriteCertificate pem encodes the certificate and writes it to dst.
 func WriteCertificate(crt []byte, dst io.Writer) error {
 	return pem.Encode(dst, &pem.Block{
 		Type:  "CERTIFICATE",
@@ -83,8 +103,10 @@ func WriteCertificate(crt []byte, dst io.Writer) error {
 	})
 }
 
+// WritePrivateKeyFile pem encodes the private key and writes it to the path.
 func WritePrivateKeyFile(key ed25519.PrivateKey, path string) error {
-	file, err := os.Create(path)
+	// file, err := os.Create(path)
+	file, err := os.OpenFile(path, os.O_CREATE|os.O_WRONLY, 0600)
 	if err != nil {
 		return err
 	}
@@ -93,6 +115,7 @@ func WritePrivateKeyFile(key ed25519.PrivateKey, path string) error {
 	return WritePrivateKey(key, file)
 }
 
+// WritePrivateKey pem encodes the private key and writes it to dst.
 func WritePrivateKey(key ed25519.PrivateKey, dst io.Writer) error {
 	b, err := x509.MarshalPKCS8PrivateKey(key)
 	if err != nil {
@@ -104,6 +127,7 @@ func WritePrivateKey(key ed25519.PrivateKey, dst io.Writer) error {
 	})
 }
 
+// ReadCertificateFile reads the certificate from the path.
 func ReadCertificateFile(path string) (*x509.Certificate, error) {
 	f, err := os.Open(path)
 	if err != nil {
@@ -112,6 +136,7 @@ func ReadCertificateFile(path string) (*x509.Certificate, error) {
 	return ReadCertificate(f)
 }
 
+// ReadCertificate reads the certificate from the reader.
 func ReadCertificate(r io.Reader) (*x509.Certificate, error) {
 	var buf bytes.Buffer
 	if _, err := io.Copy(&buf, r); err != nil {
@@ -126,6 +151,7 @@ func ReadCertificate(r io.Reader) (*x509.Certificate, error) {
 	return crt, nil
 }
 
+// ReadPrivateKeyFile reads the private key from the path.
 func ReadPrivateKeyFile(path string) (ed25519.PrivateKey, error) {
 	f, err := os.Open(path)
 	if err != nil {
@@ -134,6 +160,7 @@ func ReadPrivateKeyFile(path string) (ed25519.PrivateKey, error) {
 	return ReadPrivateKey(f)
 }
 
+// ReadPrivateKey reads the private key from the reader.
 func ReadPrivateKey(r io.Reader) (ed25519.PrivateKey, error) {
 	var buf bytes.Buffer
 	if _, err := io.Copy(&buf, r); err != nil {
