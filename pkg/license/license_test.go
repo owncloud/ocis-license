@@ -165,8 +165,8 @@ func TestEncode(t *testing.T) {
 		"lbnZpcm9ubWVudCI6IiIsImNyZWF0ZWQiOiIyMDIxLTExLTI1VDEzOjEyOjE" +
 		"1KzAxOjAwIiwiZmVhdHVyZXMiOm51bGwsInNsYSI6IiJ9"
 
-	created := time.Unix(1637842335, 0)
-	license := New(Header{Version: "1"}, Payload{ID: "f62ffd0c-604c-426b-966f-16533b6292f0", Created: created})
+	now = func() time.Time { return time.Unix(1637842335, 0) }
+	license := New(Header{Version: "1"}, Payload{ID: "f62ffd0c-604c-426b-966f-16533b6292f0"})
 
 	_ = Sign(&license, *crt, privkey.(ed25519.PrivateKey))
 
@@ -213,7 +213,7 @@ func TestSign(t *testing.T) {
 		"7cb3da49c7e991ea09fb579cfdc0739b1849")
 	privkey, _ := x509.ParsePKCS8PrivateKey(pkBytes)
 
-	license := New(Header{Version: "1"}, Payload{ID: uuid.NewString(), Created: time.Now()})
+	license := New(Header{Version: "1"}, Payload{ID: uuid.NewString()})
 
 	err := Sign(&license, *crt, privkey.(ed25519.PrivateKey))
 	if err != nil {
@@ -250,7 +250,7 @@ func TestSign_WithWrongCert(t *testing.T) {
 
 	privkey := ed25519.NewKeyFromSeed([]byte("YELLOW_SUBMARINEYELLOW_SUBMARINE"))
 
-	license := New(Header{Version: "1"}, Payload{ID: uuid.NewString(), Created: time.Now()})
+	license := New(Header{Version: "1"}, Payload{ID: uuid.NewString()})
 
 	err := Sign(&license, *crt, privkey)
 	if err == nil {
@@ -269,7 +269,7 @@ func TestVerify(t *testing.T) {
 	icrt, iprivkey, _ := crypto.GenerateIntermediateCA(*big.NewInt(2), "testissuer", "testsubject", time.Now(), time.Now().Add(time.Hour*1), *rootCert, rootPrivkey)
 	icert, _ := x509.ParseCertificate(icrt)
 
-	license := New(Header{Version: "1"}, Payload{ID: uuid.NewString(), Created: time.Now()})
+	license := New(Header{Version: "1"}, Payload{ID: uuid.NewString()})
 
 	_ = Sign(&license, *icert, iprivkey)
 
@@ -288,7 +288,7 @@ func TestVerify_WithIncorrectParentCert(t *testing.T) {
 	rootCrt2, rootPrivkey2, _ := crypto.GenerateRootCA("testsubject2")
 	rootCert2, _ := x509.ParseCertificate(rootCrt2)
 
-	license := New(Header{Version: "1"}, Payload{ID: uuid.NewString(), Created: time.Now()})
+	license := New(Header{Version: "1"}, Payload{ID: uuid.NewString()})
 
 	_ = Sign(&license, *rootCert2, rootPrivkey2)
 

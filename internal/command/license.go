@@ -1,20 +1,21 @@
 package command
 
 import (
+	"encoding/json"
 	"fmt"
+	"os"
 	"strings"
-	"time"
 
-	"github.com/google/uuid"
 	"github.com/owncloud/ocis-license/internal/crypto"
 	"github.com/owncloud/ocis-license/pkg/license"
 	"github.com/urfave/cli/v2"
 )
 
 const (
-	flagSigningKey  = "signing-key"
-	flagSigningCert = "signing-cert"
-	flagRootCert    = "root-cert"
+	flagSigningKey      = "signing-key"
+	flagSigningCert     = "signing-cert"
+	flagRootCert        = "root-cert"
+	flagPayloadTemplate = "payload-template"
 )
 
 func License() *cli.Command {
@@ -39,11 +40,17 @@ func createLicenseSubcommand() *cli.Command {
 				Name:  flagSigningCert,
 				Usage: "path to the cert corresponding to the signing key",
 			},
+			&cli.StringFlag{
+				Name:  flagPayloadTemplate,
+				Usage: "path to the payload template",
+			},
 		},
 		Action: func(c *cli.Context) error {
 			var (
 				signingKeyPath  = c.String(flagSigningKey)
 				signingCertPath = c.String(flagSigningCert)
+
+				payloadTemplatePath = c.String(flagPayloadTemplate)
 			)
 
 			signingCert, err := crypto.ReadCertificateFile(signingCertPath)
@@ -56,22 +63,20 @@ func createLicenseSubcommand() *cli.Command {
 				return err
 			}
 
+			payloadTemplate, err := os.ReadFile(payloadTemplatePath)
+			if err != nil {
+				return err
+			}
+
+			var payload license.Payload
+			err = json.Unmarshal(payloadTemplate, &payload)
+			if err != nil {
+				return err
+			}
+
 			l := license.New(
 				license.Header{Version: "1"},
-				license.Payload{
-					ID:          uuid.NewString(),
-					Created:     time.Now(),
-					Environment: "development",
-					Type:        "non-commercial",
-					Features: []string{
-						"core",
-						"thumbnails",
-						"reports",
-					},
-					Additional: map[string]interface{}{
-						"key_origin": "someorigin",
-					},
-				},
+				payload,
 			)
 
 			err = license.Sign(&l, *signingCert, signingKey)
@@ -109,9 +114,9 @@ func verifyLicenseSubCommand() *cli.Command {
 				return err
 			}
 
-			l := c.Args().First()
+			licenseStr := c.Args().First()
 
-			_, err = license.Verify(strings.NewReader(l), *rootCert)
+			_, err = license.Verify(strings.NewReader(licenseStr), *rootCert)
 			if err != nil {
 				fmt.Println("License is invalid")
 			} else {

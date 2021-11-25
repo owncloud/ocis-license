@@ -21,10 +21,14 @@ const (
 var (
 	ErrNotSigned     = errors.New("license is not signed")
 	ErrInvalidFormat = errors.New("invalid license format")
+
+	now func() time.Time = time.Now
 )
 
 // New creates a new license instance.
+// This function also sets the created date in the payload to `time.Now()`
 func New(h Header, p Payload) license {
+	p.Created = now()
 	return license{Header: h, Payload: p}
 }
 
@@ -158,13 +162,16 @@ type Header struct {
 // using the certificate from the header.
 // The values can be trusted when the signature was verified.
 type Payload struct {
-	ID          string                 `json:"id"`
-	Type        string                 `json:"type"`
-	Environment string                 `json:"environment"`
-	Created     time.Time              `json:"created"`
-	Features    []string               `json:"features"`
-	SLA         string                 `json:"sla"`
-	Additional  map[string]interface{} `json:"additional"`
+	ID           string         `json:"id"`
+	Type         string         `json:"type"`
+	Environment  string         `json:"environment"`
+	Created      time.Time      `json:"created"`
+	Features     []string       `json:"features"`
+	SlaType      string         `json:"sla_type"`
+	Origin       string         `json:"origin"`
+	GracePeriods map[int]string `json:"grace_periods"`
+	// Additional can hold fields which are not yet defined.
+	Additional map[string]interface{} `json:"additional"`
 }
 
 // license combines the Header and Payload into one struct.
