@@ -2,6 +2,7 @@ package command
 
 import (
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -21,6 +22,7 @@ func License() *cli.Command {
 		Name: "license",
 		Subcommands: []*cli.Command{
 			createLicenseSubcommand(),
+			verifyLicenseSubCommand(),
 		},
 	}
 }
@@ -31,11 +33,11 @@ func createLicenseSubcommand() *cli.Command {
 		Flags: []cli.Flag{
 			&cli.StringFlag{
 				Name:  flagSigningKey,
-				Usage: "the key used to sign the license",
+				Usage: "path to the key used to sign the license",
 			},
 			&cli.StringFlag{
 				Name:  flagSigningCert,
-				Usage: "the cert corresponding to the signing key",
+				Usage: "path to the cert corresponding to the signing key",
 			},
 		},
 		Action: func(c *cli.Context) error {
@@ -66,6 +68,9 @@ func createLicenseSubcommand() *cli.Command {
 						"thumbnails",
 						"reports",
 					},
+					Additional: map[string]interface{}{
+						"key_origin": "someorigin",
+					},
 				},
 			)
 
@@ -80,6 +85,38 @@ func createLicenseSubcommand() *cli.Command {
 			}
 			fmt.Println(encoded)
 
+			return nil
+		},
+	}
+}
+
+func verifyLicenseSubCommand() *cli.Command {
+	return &cli.Command{
+		Name: "verify",
+		Flags: []cli.Flag{
+			&cli.StringFlag{
+				Name:  flagRootCert,
+				Usage: "path to the root cert",
+			},
+		},
+		Action: func(c *cli.Context) error {
+			var (
+				rootCertPath = c.String(flagRootCert)
+			)
+
+			rootCert, err := crypto.ReadCertificateFile(rootCertPath)
+			if err != nil {
+				return err
+			}
+
+			l := c.Args().First()
+
+			_, err = license.Verify(strings.NewReader(l), *rootCert)
+			if err != nil {
+				fmt.Println("License is invalid")
+			} else {
+				fmt.Println("License is valid")
+			}
 			return nil
 		},
 	}

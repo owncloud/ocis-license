@@ -158,12 +158,13 @@ type Header struct {
 // using the certificate from the header.
 // The values can be trusted when the signature was verified.
 type Payload struct {
-	ID          string    `json:"id"`
-	Type        string    `json:"type"`
-	Environment string    `json:"environment"`
-	Created     time.Time `json:"created"`
-	Features    []string  `json:"features"`
-	SLA         string    `json:"sla"`
+	ID          string                 `json:"id"`
+	Type        string                 `json:"type"`
+	Environment string                 `json:"environment"`
+	Created     time.Time              `json:"created"`
+	Features    []string               `json:"features"`
+	SLA         string                 `json:"sla"`
+	Additional  map[string]interface{} `json:"additional"`
 }
 
 // license combines the Header and Payload into one struct.
