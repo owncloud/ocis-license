@@ -6,6 +6,7 @@ import (
 	"os"
 	"strings"
 
+	"github.com/fatih/color"
 	"github.com/owncloud/ocis-license/internal/crypto"
 	"github.com/owncloud/ocis-license/pkg/license"
 	"github.com/urfave/cli/v2"
@@ -118,9 +119,9 @@ func verifyLicenseSubCommand() *cli.Command {
 
 			_, err = license.Verify(strings.NewReader(licenseStr), *rootCert)
 			if err != nil {
-				fmt.Println("License is invalid")
+				fmt.Println(color.RedString("X"), "License is", color.RedString("invalid"))
 			} else {
-				fmt.Println("License is valid")
+				fmt.Println(color.GreenString("✓"), "License is", color.GreenString("valid"))
 			}
 			return nil
 		},
