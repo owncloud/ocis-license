@@ -1,24 +1,34 @@
 package license
 
 import (
+	"crypto/ed25519"
+	"crypto/x509"
 	"encoding/hex"
+	"encoding/json"
+	"errors"
+	"math/big"
+	"strings"
 	"testing"
+	"time"
+
+	"github.com/google/uuid"
+	"github.com/owncloud/ocis-license/internal/crypto"
 )
 
 func TestParseHeader(t *testing.T) {
 	encoded := "" +
-		"eyJ2ZXJzaW9uIjoiMSIsInNpZ25hdHVyZSI6Ik0wd3RsaXZzMjVwRjVmd0pI" +
-		"YzF6UkZLZWlzOFlOT05xYklxTDhlMlJZNFRqZGFTMW03LzNXckUvOFpsc054" +
-		"eEw5U2hWVURObmUzTmlOYk9zZjNYbUNnPT0iLCJjZXJ0aWZpY2F0ZSI6Ik1J" +
-		"SUJJRENCMDZBREFnRUNBZ0VjTUFVR0F5dGxjREFZTVJZd0ZBWURWUVFERXcx" +
-		"dmQyNURiRzkxWkNCSGJXSklNQjRYRFRJeE1URXlOREUwTXpnME4xb1hEVEl6" +
-		"TVRFeU5ERTBNemcwTjFvd0dERVdNQlFHQTFVRUF4TU5iM2R1UTJ4dmRXUWdS" +
-		"MjFpU0RBcU1BVUdBeXRsY0FNaEFKZlF0VXhCdWY4WllBZER1MlU5RldNVUFi" +
-		"V205TUJEVWRJTlNaTnpWckpNbzBJd1FEQU9CZ05WSFE4QkFmOEVCQU1DQVlZ" +
-		"d0R3WURWUjBUQVFIL0JBVXdBd0VCL3pBZEJnTlZIUTRFRmdRVVAyamNLdUhO" +
-		"a3pQK29Weml1ZmcyWWpXN0hmY3dCUVlESzJWd0EwRUFtemZ1OVNGeXpMNjBT" +
-		"K3VRTlNXZXVTZXp2eVFFMzFnNUNDc2t1MmZCUkcyRHB3ZW90NFd0dEVhTGJ5" +
-		"TVFtUEhldi81dlQ0MG03MUNXZlBOTjdYSzZDdz09In0="
+		"eyJ2ZXJzaW9uIjoiMSIsInBheWxvYWRfc2lnbmF0dXJlIjoiTTB3dGxpdnMy" +
+		"NXBGNWZ3SkhjMXpSRktlaXM4WU5PTnFiSXFMOGUyUlk0VGpkYVMxbTcvM1dy" +
+		"RS84WmxzTnh4TDlTaFZVRE5uZTNOaU5iT3NmM1htQ2c9PSIsImNlcnRpZmlj" +
+		"YXRlIjoiTUlJQklEQ0IwNkFEQWdFQ0FnRWNNQVVHQXl0bGNEQVlNUll3RkFZ" +
+		"RFZRUURFdzF2ZDI1RGJHOTFaQ0JIYldKSU1CNFhEVEl4TVRFeU5ERTBNemcw" +
+		"TjFvWERUSXpNVEV5TkRFME16ZzBOMW93R0RFV01CUUdBMVVFQXhNTmIzZHVR" +
+		"Mnh2ZFdRZ1IyMWlTREFxTUFVR0F5dGxjQU1oQUpmUXRVeEJ1ZjhaWUFkRHUy" +
+		"VTlGV01VQWJXbTlNQkRVZElOU1pOelZySk1vMEl3UURBT0JnTlZIUThCQWY4" +
+		"RUJBTUNBWVl3RHdZRFZSMFRBUUgvQkFVd0F3RUIvekFkQmdOVkhRNEVGZ1FV" +
+		"UDJqY0t1SE5relArb1Z6aXVmZzJZalc3SGZjd0JRWURLMlZ3QTBFQW16ZnU5" +
+		"U0Z5ekw2MFMrdVFOU1dldVNlenZ5UUUzMWc1Q0Nza3UyZkJSRzJEcHdlb3Q0" +
+		"V3R0RWFMYnlNUW1QSGV2LzV2VDQwbTcxQ1dmUE5ON1hLNkN3PT0ifQ=="
 
 	expectedSignature := "" +
 		"334c2d962becdb9a45e5fc091dcd7344529e8acf1834e36a6c8a8bf1ed91" +
@@ -103,5 +113,260 @@ func TestEncodePart(t *testing.T) {
 
 	if string(encoded) != expected {
 		t.Errorf("encodePart returned unexpected value: expected %s got %s", expected, encoded)
+	}
+}
+
+func TestLicenseEncode_WihtoutSignature(t *testing.T) {
+	license := New(Header{}, Payload{})
+
+	var sb strings.Builder
+	if err := license.Encode(&sb); !errors.Is(err, ErrNotSigned) {
+		t.Error("Expected Encode to return ErrNotSigned error")
+	}
+
+	if _, err := license.EncodeToString(); !errors.Is(err, ErrNotSigned) {
+		t.Error("Expected EncodeToString to return ErrNotSigned error")
+	}
+}
+
+func TestEncode(t *testing.T) {
+	crtBytes, _ := hex.DecodeString("" +
+		"3082011c3081cfa003020102020101300506032b65703016311430120603" +
+		"550403130b746573747375626a656374301e170d32313131323531313335" +
+		"33375a170d3331313132353131333533375a301631143012060355040313" +
+		"0b746573747375626a656374302a300506032b6570032100180ffb1d22f3" +
+		"f2b09589437650baa857d18ae56bf9969fc6322f9943801a41cca3423040" +
+		"300e0603551d0f0101ff040403020186300f0603551d130101ff04053003" +
+		"0101ff301d0603551d0e0416041439653fb3bdae4b0ebeca6bd830e0366b" +
+		"668b61cf300506032b6570034100d5083525f9f86af69f238d9b79d38586" +
+		"44582dc593b2dea6093f20e2e6713930595667101470144ebead89c13211" +
+		"9f84ecfe96715608de2d9212330376c1f20f")
+	crt, _ := x509.ParseCertificate(crtBytes)
+
+	pkBytes, _ := hex.DecodeString("" +
+		"302e020100300506032b657004220420fc7c154f9f8384186c8aacea18b4" +
+		"7cb3da49c7e991ea09fb579cfdc0739b1849")
+	privkey, _ := x509.ParsePKCS8PrivateKey(pkBytes)
+
+	expectedLicense := "" +
+		"eyJ2ZXJzaW9uIjoiMSIsInBheWxvYWRfc2lnbmF0dXJlIjoia09aaUVvcE92" +
+		"SzFHSmhBR3B3cUtmTU5EOTVsWXAyam40V1IxK2lzRC9uNEpKZGsrNjAxQ1JV" +
+		"WW9jVGFZK3JnRTFVd1lBMWxLM3U2ZnpBc0dlUFR1RFE9PSIsImNlcnRpZmlj" +
+		"YXRlIjoiTUlJQkhEQ0J6NkFEQWdFQ0FnRUJNQVVHQXl0bGNEQVdNUlF3RWdZ" +
+		"RFZRUURFd3QwWlhOMGMzVmlhbVZqZERBZUZ3MHlNVEV4TWpVeE1UTTFNemRh" +
+		"Rncwek1URXhNalV4TVRNMU16ZGFNQll4RkRBU0JnTlZCQU1UQzNSbGMzUnpk" +
+		"V0pxWldOME1Db3dCUVlESzJWd0F5RUFHQS83SFNMejhyQ1ZpVU4yVUxxb1Y5" +
+		"R0s1V3Y1bHAvR01pK1pRNEFhUWN5alFqQkFNQTRHQTFVZER3RUIvd1FFQXdJ" +
+		"QmhqQVBCZ05WSFJNQkFmOEVCVEFEQVFIL01CMEdBMVVkRGdRV0JCUTVaVCt6" +
+		"dmE1TERyN0thOWd3NERaclpvdGh6ekFGQmdNclpYQURRUURWQ0RVbCtmaHE5" +
+		"cDhqalp0NTA0V0dSRmd0eFpPeTNxWUpQeURpNW5FNU1GbFdaeEFVY0JST3Zx" +
+		"Mkp3VElSbjRUcy9wWnhWZ2plTFpJU013TjJ3ZklQIn0=.eyJpZCI6ImY2MmZ" +
+		"mZDBjLTYwNGMtNDI2Yi05NjZmLTE2NTMzYjYyOTJmMCIsInR5cGUiOiIiLCJ" +
+		"lbnZpcm9ubWVudCI6IiIsImNyZWF0ZWQiOiIyMDIxLTExLTI1VDEzOjEyOjE" +
+		"1KzAxOjAwIiwiZmVhdHVyZXMiOm51bGwsInNsYSI6IiJ9"
+
+	created := time.Unix(1637842335, 0)
+	license := New(Header{Version: "1"}, Payload{ID: "f62ffd0c-604c-426b-966f-16533b6292f0", Created: created})
+
+	_ = Sign(&license, *crt, privkey.(ed25519.PrivateKey))
+
+	var sb strings.Builder
+	err := license.Encode(&sb)
+	if err != nil {
+		t.Errorf("Encode failed: %s", err.Error())
+	}
+
+	if sb.String() != expectedLicense {
+		t.Errorf("Encoded license is not expected value. Expected %s Got %s", expectedLicense, sb.String())
+	}
+
+	if encoded, err := license.EncodeToString(); err != nil {
+		t.Errorf("EncodeToString failed: %s", err.Error())
+	} else if encoded != expectedLicense {
+		t.Errorf("EncodeToString did not return expected value. Expected %s Got %s", expectedLicense, encoded)
+	}
+}
+
+func TestEncode_WithNilWriter(t *testing.T) {
+	license := New(Header{}, Payload{})
+	if err := license.Encode(nil); err == nil {
+		t.Error("Expected Encode with nil writer to return an error.")
+	}
+}
+
+func TestSign(t *testing.T) {
+	crtBytes, _ := hex.DecodeString("" +
+		"3082011c3081cfa003020102020101300506032b65703016311430120603" +
+		"550403130b746573747375626a656374301e170d32313131323531313335" +
+		"33375a170d3331313132353131333533375a301631143012060355040313" +
+		"0b746573747375626a656374302a300506032b6570032100180ffb1d22f3" +
+		"f2b09589437650baa857d18ae56bf9969fc6322f9943801a41cca3423040" +
+		"300e0603551d0f0101ff040403020186300f0603551d130101ff04053003" +
+		"0101ff301d0603551d0e0416041439653fb3bdae4b0ebeca6bd830e0366b" +
+		"668b61cf300506032b6570034100d5083525f9f86af69f238d9b79d38586" +
+		"44582dc593b2dea6093f20e2e6713930595667101470144ebead89c13211" +
+		"9f84ecfe96715608de2d9212330376c1f20f")
+	crt, _ := x509.ParseCertificate(crtBytes)
+
+	pkBytes, _ := hex.DecodeString("" +
+		"302e020100300506032b657004220420fc7c154f9f8384186c8aacea18b4" +
+		"7cb3da49c7e991ea09fb579cfdc0739b1849")
+	privkey, _ := x509.ParsePKCS8PrivateKey(pkBytes)
+
+	license := New(Header{Version: "1"}, Payload{ID: uuid.NewString(), Created: time.Now()})
+
+	err := Sign(&license, *crt, privkey.(ed25519.PrivateKey))
+	if err != nil {
+		t.Errorf("Sign failed: %s", err.Error())
+	}
+
+	if license.Header.PayloadSignature == nil {
+		t.Error("Sign didn't set the signature")
+	}
+
+	if license.Header.Certificate == nil {
+		t.Error("Sign didn't set the certificate")
+	}
+
+	m, _ := json.Marshal(license.Payload)
+	if err := crt.CheckSignature(x509.PureEd25519, m, license.Header.PayloadSignature); err != nil {
+		t.Error("Signature from Sign could not be verified")
+	}
+}
+
+func TestSign_WithWrongCert(t *testing.T) {
+	crtBytes, _ := hex.DecodeString("" +
+		"3082011c3081cfa003020102020101300506032b65703016311430120603" +
+		"550403130b746573747375626a656374301e170d32313131323531313335" +
+		"33375a170d3331313132353131333533375a301631143012060355040313" +
+		"0b746573747375626a656374302a300506032b6570032100180ffb1d22f3" +
+		"f2b09589437650baa857d18ae56bf9969fc6322f9943801a41cca3423040" +
+		"300e0603551d0f0101ff040403020186300f0603551d130101ff04053003" +
+		"0101ff301d0603551d0e0416041439653fb3bdae4b0ebeca6bd830e0366b" +
+		"668b61cf300506032b6570034100d5083525f9f86af69f238d9b79d38586" +
+		"44582dc593b2dea6093f20e2e6713930595667101470144ebead89c13211" +
+		"9f84ecfe96715608de2d9212330376c1f20f")
+	crt, _ := x509.ParseCertificate(crtBytes)
+
+	privkey := ed25519.NewKeyFromSeed([]byte("YELLOW_SUBMARINEYELLOW_SUBMARINE"))
+
+	license := New(Header{Version: "1"}, Payload{ID: uuid.NewString(), Created: time.Now()})
+
+	err := Sign(&license, *crt, privkey)
+	if err == nil {
+		t.Errorf("Sign should fail if the cert doesn't belong to the private key")
+	}
+
+	if license.Header.PayloadSignature != nil || license.Header.Certificate != nil {
+		t.Error("Sign failed but set a signature or certificate")
+	}
+}
+
+func TestVerify(t *testing.T) {
+	rootCrt, rootPrivkey, _ := crypto.GenerateRootCA("testsubject")
+	rootCert, _ := x509.ParseCertificate(rootCrt)
+
+	icrt, iprivkey, _ := crypto.GenerateIntermediateCA(*big.NewInt(2), "testissuer", "testsubject", time.Now(), time.Now().Add(time.Hour*1), *rootCert, rootPrivkey)
+	icert, _ := x509.ParseCertificate(icrt)
+
+	license := New(Header{Version: "1"}, Payload{ID: uuid.NewString(), Created: time.Now()})
+
+	_ = Sign(&license, *icert, iprivkey)
+
+	encoded, _ := license.EncodeToString()
+
+	_, err := Verify(strings.NewReader(encoded), *rootCert)
+	if err != nil {
+		t.Errorf("Verify failed: %s", err.Error())
+	}
+}
+
+func TestVerify_WithIncorrectParentCert(t *testing.T) {
+	rootCrt, _, _ := crypto.GenerateRootCA("testsubject")
+	rootCert, _ := x509.ParseCertificate(rootCrt)
+
+	rootCrt2, rootPrivkey2, _ := crypto.GenerateRootCA("testsubject2")
+	rootCert2, _ := x509.ParseCertificate(rootCrt2)
+
+	license := New(Header{Version: "1"}, Payload{ID: uuid.NewString(), Created: time.Now()})
+
+	_ = Sign(&license, *rootCert2, rootPrivkey2)
+
+	encoded, _ := license.EncodeToString()
+
+	_, err := Verify(strings.NewReader(encoded), *rootCert)
+	if err == nil {
+		t.Error("Verify should fail with wrong parent cert")
+	}
+}
+
+func TestVerify_WithInvalidInputs(t *testing.T) {
+	crtBytes, _ := hex.DecodeString("" +
+		"3082011c3081cfa003020102020101300506032b65703016311430120603" +
+		"550403130b746573747375626a656374301e170d32313131323531313335" +
+		"33375a170d3331313132353131333533375a301631143012060355040313" +
+		"0b746573747375626a656374302a300506032b6570032100180ffb1d22f3" +
+		"f2b09589437650baa857d18ae56bf9969fc6322f9943801a41cca3423040" +
+		"300e0603551d0f0101ff040403020186300f0603551d130101ff04053003" +
+		"0101ff301d0603551d0e0416041439653fb3bdae4b0ebeca6bd830e0366b" +
+		"668b61cf300506032b6570034100d5083525f9f86af69f238d9b79d38586" +
+		"44582dc593b2dea6093f20e2e6713930595667101470144ebead89c13211" +
+		"9f84ecfe96715608de2d9212330376c1f20f")
+	cert, _ := x509.ParseCertificate(crtBytes)
+
+	inputs := []string{
+		"some string",
+		"some.string",
+		"some.ohter.string.",
+		"" +
+			"eyJ2ZXJzaW9uIjoiMSIsInBheWxvYWRfc2lnbmF0dXJlIjoia09aaUVvcE92" +
+			"SzFHSmhBR3B3cUtmTU5EOTVsWXAyam40V1IxK2lzRC9uNEpKZGsrNjAxQ1JV" +
+			"WW9jVGFZK3JnRTFVd1lBMWxLM3U2ZnpBc0dlUFR1RFE9PSIsImNlcnRpZmlj" +
+			"YXRlIjoiUE9pSXBvS1owWjdFcjEwOEpEOWxIUT09In0=.foo",
+		"" +
+			"eyJ2ZXJzaW9uIjoiMSIsInBheWxvYWRfc2lnbmF0dXJlIjoia09aaUVvcE92" +
+			"SzFHSmhBR3B3cUtmTU5EOTVsWXAyam40V1IxK2lzRC9uNEpKZGsrNjAxQ1JV" +
+			"WW9jVGFZK3JnRTFVd1lBMWxLM3U2ZnpBc0dlUFR1RFE9PSIsImNlcnRpZmlj" +
+			"YXRlIjoiTUlJQkhEQ0J6NkFEQWdFQ0FnRUJNQVVHQXl0bGNEQVdNUlF3RWdZ" +
+			"RFZRUURFd3QwWlhOMGMzVmlhbVZqZERBZUZ3MHlNVEV4TWpVeE1UTTFNemRh" +
+			"Rncwek1URXhNalV4TVRNMU16ZGFNQll4RkRBU0JnTlZCQU1UQzNSbGMzUnpk" +
+			"V0pxWldOME1Db3dCUVlESzJWd0F5RUFHQS83SFNMejhyQ1ZpVU4yVUxxb1Y5" +
+			"R0s1V3Y1bHAvR01pK1pRNEFhUWN5alFqQkFNQTRHQTFVZER3RUIvd1FFQXdJ" +
+			"QmhqQVBCZ05WSFJNQkFmOEVCVEFEQVFIL01CMEdBMVVkRGdRV0JCUTVaVCt6" +
+			"dmE1TERyN0thOWd3NERaclpvdGh6ekFGQmdNclpYQURRUURWQ0RVbCtmaHE5" +
+			"cDhqalp0NTA0V0dSRmd0eFpPeTNxWUpQeURpNW5FNU1GbFdaeEFVY0JST3Zx" +
+			"Mkp3VElSbjRUcy9wWnhWZ2plTFpJU013TjJ3ZklQIn0=.invalidpayload",
+		"" +
+			"eyJ2ZXJzaW9uIjoiMSIsInBheWxvYWRfc2lnbmF0dXJlIjoia09aaUVvcE92" +
+			"SzFHSmhBR3B3cUtmTU5EOTVsWXAyam40V1IxK2lzRC9uNEpKZGsrNjAxQ1JV" +
+			"WW9jVGFZK3JnRTFVd1lBMWxLM3U2ZnpBc0dlUFR1RFE9PSIsImNlcnRpZmlj" +
+			"YXRlIjoiTUlJQkhEQ0J6NkFEQWdFQ0FnRUJNQVVHQXl0bGNEQVdNUlF3RWdZ" +
+			"RFZRUURFd3QwWlhOMGMzVmlhbVZqZERBZUZ3MHlNVEV4TWpVeE1UTTFNemRh" +
+			"Rncwek1URXhNalV4TVRNMU16ZGFNQll4RkRBU0JnTlZCQU1UQzNSbGMzUnpk" +
+			"V0pxWldOME1Db3dCUVlESzJWd0F5RUFHQS83SFNMejhyQ1ZpVU4yVUxxb1Y5" +
+			"R0s1V3Y1bHAvR01pK1pRNEFhUWN5alFqQkFNQTRHQTFVZER3RUIvd1FFQXdJ" +
+			"QmhqQVBCZ05WSFJNQkFmOEVCVEFEQVFIL01CMEdBMVVkRGdRV0JCUTVaVCt6" +
+			"dmE1TERyN0thOWd3NERaclpvdGh6ekFGQmdNclpYQURRUURWQ0RVbCtmaHE5" +
+			"cDhqalp0NTA0V0dSRmd0eFpPeTNxWUpQeURpNW5FNU1GbFdaeEFVY0JST3Zx" +
+			"Mkp3VElSbjRUcy9wWnhWZ2plTFpJU013TjJ3ZklQIn0=.eyJpZCI6InNvbWV" +
+			"0aGluZyIsInR5cGUiOiIiLCJlbnZpcm9ubWVudCI6IiIsImNyZWF0ZWQiOiI" +
+			"yMDIxLTExLTI1VDEzOjEyOjE1KzAxOjAwIiwiZmVhdHVyZXMiOm51bGwsInN" +
+			"sYSI6IiJ9",
+	}
+
+	for _, i := range inputs {
+		_, err := Verify(strings.NewReader(i), *cert)
+		if err == nil {
+			t.Errorf("Expected Verify to fail with input %s", i)
+		}
+	}
+}
+
+func TestVerify_WithNilReader(t *testing.T) {
+	crt, _, _ := crypto.GenerateRootCA("testsubject")
+	cert, _ := x509.ParseCertificate(crt)
+
+	if _, err := Verify(nil, *cert); err == nil {
+		t.Error("Expected Verify with a nil reader to return an error.")
 	}
 }

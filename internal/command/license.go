@@ -54,14 +54,10 @@ func createLicenseSubcommand() *cli.Command {
 				return err
 			}
 
-			id, err := uuid.NewUUID()
-			if err != nil {
-				return err
-			}
-			l := license.License{
-				Header: license.Header{Version: "1"},
-				Payload: license.Payload{
-					ID:          id.String(),
+			l := license.New(
+				license.Header{Version: "1"},
+				license.Payload{
+					ID:          uuid.NewString(),
 					Created:     time.Now(),
 					Environment: "development",
 					Type:        "non-commercial",
@@ -71,7 +67,7 @@ func createLicenseSubcommand() *cli.Command {
 						"reports",
 					},
 				},
-			}
+			)
 
 			err = license.Sign(&l, *signingCert, signingKey)
 			if err != nil {
