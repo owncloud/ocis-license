@@ -149,9 +149,9 @@ func TestEncode(t *testing.T) {
 	privkey, _ := x509.ParsePKCS8PrivateKey(pkBytes)
 
 	expectedLicense := "" +
-		"eyJ2ZXJzaW9uIjoiMSIsInBheWxvYWRfc2lnbmF0dXJlIjoia09aaUVvcE92" +
-		"SzFHSmhBR3B3cUtmTU5EOTVsWXAyam40V1IxK2lzRC9uNEpKZGsrNjAxQ1JV" +
-		"WW9jVGFZK3JnRTFVd1lBMWxLM3U2ZnpBc0dlUFR1RFE9PSIsImNlcnRpZmlj" +
+		"eyJ2ZXJzaW9uIjoiMSIsInBheWxvYWRfc2lnbmF0dXJlIjoiUHlER3lXZllj" +
+		"NVQzNDJheEE3a1locjlLSU1BZFRpamEyeGxGRmxJL04wQlh6N2RDelcrcGZ3" +
+		"OERPWGhwLzJtNmxGUDFGbXlJVUF0VG1BMEY2bEJFQXc9PSIsImNlcnRpZmlj" +
 		"YXRlIjoiTUlJQkhEQ0J6NkFEQWdFQ0FnRUJNQVVHQXl0bGNEQVdNUlF3RWdZ" +
 		"RFZRUURFd3QwWlhOMGMzVmlhbVZqZERBZUZ3MHlNVEV4TWpVeE1UTTFNemRh" +
 		"Rncwek1URXhNalV4TVRNMU16ZGFNQll4RkRBU0JnTlZCQU1UQzNSbGMzUnpk" +
@@ -163,7 +163,8 @@ func TestEncode(t *testing.T) {
 		"Mkp3VElSbjRUcy9wWnhWZ2plTFpJU013TjJ3ZklQIn0=.eyJpZCI6ImY2MmZ" +
 		"mZDBjLTYwNGMtNDI2Yi05NjZmLTE2NTMzYjYyOTJmMCIsInR5cGUiOiIiLCJ" +
 		"lbnZpcm9ubWVudCI6IiIsImNyZWF0ZWQiOiIyMDIxLTExLTI1VDEzOjEyOjE" +
-		"1KzAxOjAwIiwiZmVhdHVyZXMiOm51bGwsInNsYSI6IiJ9"
+		"1KzAxOjAwIiwiZmVhdHVyZXMiOm51bGwsInNsYV90eXBlIjoiIiwib3JpZ2l" +
+		"uIjoiIiwiZ3JhY2VfcGVyaW9kcyI6bnVsbCwiYWRkaXRpb25hbCI6bnVsbH0="
 
 	now = func() time.Time { return time.Unix(1637842335, 0) }
 	license := New(Header{Version: "1"}, Payload{ID: "f62ffd0c-604c-426b-966f-16533b6292f0"})
