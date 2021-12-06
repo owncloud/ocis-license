@@ -17,18 +17,18 @@ import (
 
 func TestParseHeader(t *testing.T) {
 	encoded := "" +
-		"eyJ2ZXJzaW9uIjoiMSIsInBheWxvYWRfc2lnbmF0dXJlIjoiTTB3dGxpdnMy" +
-		"NXBGNWZ3SkhjMXpSRktlaXM4WU5PTnFiSXFMOGUyUlk0VGpkYVMxbTcvM1dy" +
-		"RS84WmxzTnh4TDlTaFZVRE5uZTNOaU5iT3NmM1htQ2c9PSIsImNlcnRpZmlj" +
-		"YXRlIjoiTUlJQklEQ0IwNkFEQWdFQ0FnRWNNQVVHQXl0bGNEQVlNUll3RkFZ" +
-		"RFZRUURFdzF2ZDI1RGJHOTFaQ0JIYldKSU1CNFhEVEl4TVRFeU5ERTBNemcw" +
-		"TjFvWERUSXpNVEV5TkRFME16ZzBOMW93R0RFV01CUUdBMVVFQXhNTmIzZHVR" +
-		"Mnh2ZFdRZ1IyMWlTREFxTUFVR0F5dGxjQU1oQUpmUXRVeEJ1ZjhaWUFkRHUy" +
-		"VTlGV01VQWJXbTlNQkRVZElOU1pOelZySk1vMEl3UURBT0JnTlZIUThCQWY4" +
-		"RUJBTUNBWVl3RHdZRFZSMFRBUUgvQkFVd0F3RUIvekFkQmdOVkhRNEVGZ1FV" +
-		"UDJqY0t1SE5relArb1Z6aXVmZzJZalc3SGZjd0JRWURLMlZ3QTBFQW16ZnU5" +
-		"U0Z5ekw2MFMrdVFOU1dldVNlenZ5UUUzMWc1Q0Nza3UyZkJSRzJEcHdlb3Q0" +
-		"V3R0RWFMYnlNUW1QSGV2LzV2VDQwbTcxQ1dmUE5ON1hLNkN3PT0ifQ=="
+		"eyJ2ZXJzaW9uIjoxLCJwYXlsb2FkX3NpZ25hdHVyZSI6Ik0wd3RsaXZzMjVw" +
+		"RjVmd0pIYzF6UkZLZWlzOFlOT05xYklxTDhlMlJZNFRqZGFTMW03LzNXckUv" +
+		"OFpsc054eEw5U2hWVURObmUzTmlOYk9zZjNYbUNnPT0iLCJjZXJ0aWZpY2F0" +
+		"ZSI6Ik1JSUJJRENCMDZBREFnRUNBZ0VjTUFVR0F5dGxjREFZTVJZd0ZBWURW" +
+		"UVFERXcxdmQyNURiRzkxWkNCSGJXSklNQjRYRFRJeE1URXlOREUwTXpnME4x" +
+		"b1hEVEl6TVRFeU5ERTBNemcwTjFvd0dERVdNQlFHQTFVRUF4TU5iM2R1UTJ4" +
+		"dmRXUWdSMjFpU0RBcU1BVUdBeXRsY0FNaEFKZlF0VXhCdWY4WllBZER1MlU5" +
+		"RldNVUFiV205TUJEVWRJTlNaTnpWckpNbzBJd1FEQU9CZ05WSFE4QkFmOEVC" +
+		"QU1DQVlZd0R3WURWUjBUQVFIL0JBVXdBd0VCL3pBZEJnTlZIUTRFRmdRVVAy" +
+		"amNLdUhOa3pQK29Weml1ZmcyWWpXN0hmY3dCUVlESzJWd0EwRUFtemZ1OVNG" +
+		"eXpMNjBTK3VRTlNXZXVTZXp2eVFFMzFnNUNDc2t1MmZCUkcyRHB3ZW90NFd0" +
+		"dEVhTGJ5TVFtUEhldi81dlQ0MG03MUNXZlBOTjdYSzZDdz09In0="
 
 	expectedSignature := "" +
 		"334c2d962becdb9a45e5fc091dcd7344529e8acf1834e36a6c8a8bf1ed91" +
@@ -53,7 +53,7 @@ func TestParseHeader(t *testing.T) {
 		t.Error("parseHeader failed")
 	}
 
-	if h.Version != "1" || hex.EncodeToString(h.PayloadSignature) != expectedSignature || hex.EncodeToString(h.Certificate) != expectedCert {
+	if h.Version != 1 || hex.EncodeToString(h.PayloadSignature) != expectedSignature || hex.EncodeToString(h.Certificate) != expectedCert {
 		t.Errorf("parseHeader returned unexpected values in header: %v", h)
 	}
 }
@@ -117,7 +117,7 @@ func TestEncodePart(t *testing.T) {
 }
 
 func TestLicenseEncode_WihtoutSignature(t *testing.T) {
-	license := New(Header{}, Payload{})
+	license := New(Payload{})
 
 	var sb strings.Builder
 	if err := license.Encode(&sb); !errors.Is(err, ErrNotSigned) {
@@ -149,25 +149,25 @@ func TestEncode(t *testing.T) {
 	privkey, _ := x509.ParsePKCS8PrivateKey(pkBytes)
 
 	expectedLicense := "" +
-		"eyJ2ZXJzaW9uIjoiMSIsInBheWxvYWRfc2lnbmF0dXJlIjoiUHlER3lXZllj" +
-		"NVQzNDJheEE3a1locjlLSU1BZFRpamEyeGxGRmxJL04wQlh6N2RDelcrcGZ3" +
-		"OERPWGhwLzJtNmxGUDFGbXlJVUF0VG1BMEY2bEJFQXc9PSIsImNlcnRpZmlj" +
-		"YXRlIjoiTUlJQkhEQ0J6NkFEQWdFQ0FnRUJNQVVHQXl0bGNEQVdNUlF3RWdZ" +
-		"RFZRUURFd3QwWlhOMGMzVmlhbVZqZERBZUZ3MHlNVEV4TWpVeE1UTTFNemRh" +
-		"Rncwek1URXhNalV4TVRNMU16ZGFNQll4RkRBU0JnTlZCQU1UQzNSbGMzUnpk" +
-		"V0pxWldOME1Db3dCUVlESzJWd0F5RUFHQS83SFNMejhyQ1ZpVU4yVUxxb1Y5" +
-		"R0s1V3Y1bHAvR01pK1pRNEFhUWN5alFqQkFNQTRHQTFVZER3RUIvd1FFQXdJ" +
-		"QmhqQVBCZ05WSFJNQkFmOEVCVEFEQVFIL01CMEdBMVVkRGdRV0JCUTVaVCt6" +
-		"dmE1TERyN0thOWd3NERaclpvdGh6ekFGQmdNclpYQURRUURWQ0RVbCtmaHE5" +
-		"cDhqalp0NTA0V0dSRmd0eFpPeTNxWUpQeURpNW5FNU1GbFdaeEFVY0JST3Zx" +
-		"Mkp3VElSbjRUcy9wWnhWZ2plTFpJU013TjJ3ZklQIn0=.eyJpZCI6ImY2MmZ" +
-		"mZDBjLTYwNGMtNDI2Yi05NjZmLTE2NTMzYjYyOTJmMCIsInR5cGUiOiIiLCJ" +
-		"lbnZpcm9ubWVudCI6IiIsImNyZWF0ZWQiOiIyMDIxLTExLTI1VDEzOjEyOjE" +
-		"1KzAxOjAwIiwiZmVhdHVyZXMiOm51bGwsInNsYV90eXBlIjoiIiwib3JpZ2l" +
-		"uIjoiIiwiZ3JhY2VfcGVyaW9kcyI6bnVsbCwiYWRkaXRpb25hbCI6bnVsbH0="
+		"eyJ2ZXJzaW9uIjoxLCJwYXlsb2FkX3NpZ25hdHVyZSI6IlB5REd5V2ZZYzVU" +
+		"MzQyYXhBN2tZaHI5S0lNQWRUaWphMnhsRkZsSS9OMEJYejdkQ3pXK3BmdzhE" +
+		"T1hocC8ybTZsRlAxRm15SVVBdFRtQTBGNmxCRUF3PT0iLCJjZXJ0aWZpY2F0" +
+		"ZSI6Ik1JSUJIRENCejZBREFnRUNBZ0VCTUFVR0F5dGxjREFXTVJRd0VnWURW" +
+		"UVFERXd0MFpYTjBjM1ZpYW1WamREQWVGdzB5TVRFeE1qVXhNVE0xTXpkYUZ3" +
+		"MHpNVEV4TWpVeE1UTTFNemRhTUJZeEZEQVNCZ05WQkFNVEMzUmxjM1J6ZFdK" +
+		"cVpXTjBNQ293QlFZREsyVndBeUVBR0EvN0hTTHo4ckNWaVVOMlVMcW9WOUdL" +
+		"NVd2NWxwL0dNaStaUTRBYVFjeWpRakJBTUE0R0ExVWREd0VCL3dRRUF3SUJo" +
+		"akFQQmdOVkhSTUJBZjhFQlRBREFRSC9NQjBHQTFVZERnUVdCQlE1WlQrenZh" +
+		"NUxEcjdLYTlndzREWnJab3RoenpBRkJnTXJaWEFEUVFEVkNEVWwrZmhxOXA4" +
+		"ampadDUwNFdHUkZndHhaT3kzcVlKUHlEaTVuRTVNRmxXWnhBVWNCUk92cTJK" +
+		"d1RJUm40VHMvcFp4VmdqZUxaSVNNd04yd2ZJUCJ9.eyJpZCI6ImY2MmZmZDB" +
+		"jLTYwNGMtNDI2Yi05NjZmLTE2NTMzYjYyOTJmMCIsInR5cGUiOiIiLCJlbnZ" +
+		"pcm9ubWVudCI6IiIsImNyZWF0ZWQiOiIyMDIxLTExLTI1VDEzOjEyOjE1KzA" +
+		"xOjAwIiwiZmVhdHVyZXMiOm51bGwsInNsYV90eXBlIjoiIiwib3JpZ2luIjo" +
+		"iIiwiZ3JhY2VfcGVyaW9kcyI6bnVsbCwiYWRkaXRpb25hbCI6bnVsbH0="
 
 	now = func() time.Time { return time.Unix(1637842335, 0) }
-	license := New(Header{Version: "1"}, Payload{ID: "f62ffd0c-604c-426b-966f-16533b6292f0"})
+	license := New(Payload{ID: "f62ffd0c-604c-426b-966f-16533b6292f0"})
 
 	_ = Sign(&license, *crt, privkey.(ed25519.PrivateKey))
 
@@ -189,7 +189,7 @@ func TestEncode(t *testing.T) {
 }
 
 func TestEncode_WithNilWriter(t *testing.T) {
-	license := New(Header{}, Payload{})
+	license := New(Payload{})
 	if err := license.Encode(nil); err == nil {
 		t.Error("Expected Encode with nil writer to return an error.")
 	}
@@ -214,7 +214,7 @@ func TestSign(t *testing.T) {
 		"7cb3da49c7e991ea09fb579cfdc0739b1849")
 	privkey, _ := x509.ParsePKCS8PrivateKey(pkBytes)
 
-	license := New(Header{Version: "1"}, Payload{ID: uuid.NewString()})
+	license := New(Payload{ID: uuid.NewString()})
 
 	err := Sign(&license, *crt, privkey.(ed25519.PrivateKey))
 	if err != nil {
@@ -251,7 +251,7 @@ func TestSign_WithWrongCert(t *testing.T) {
 
 	privkey := ed25519.NewKeyFromSeed([]byte("YELLOW_SUBMARINEYELLOW_SUBMARINE"))
 
-	license := New(Header{Version: "1"}, Payload{ID: uuid.NewString()})
+	license := New(Payload{ID: uuid.NewString()})
 
 	err := Sign(&license, *crt, privkey)
 	if err == nil {
@@ -270,7 +270,7 @@ func TestVerify(t *testing.T) {
 	icrt, iprivkey, _ := crypto.GenerateIntermediateCA(*big.NewInt(2), "testissuer", "testsubject", time.Now(), time.Now().Add(time.Hour*1), *rootCert, rootPrivkey)
 	icert, _ := x509.ParseCertificate(icrt)
 
-	license := New(Header{Version: "1"}, Payload{ID: uuid.NewString()})
+	license := New(Payload{ID: uuid.NewString()})
 
 	_ = Sign(&license, *icert, iprivkey)
 
@@ -289,7 +289,7 @@ func TestVerify_WithIncorrectParentCert(t *testing.T) {
 	rootCrt2, rootPrivkey2, _ := crypto.GenerateRootCA("testsubject2")
 	rootCert2, _ := x509.ParseCertificate(rootCrt2)
 
-	license := New(Header{Version: "1"}, Payload{ID: uuid.NewString()})
+	license := New(Payload{ID: uuid.NewString()})
 
 	_ = Sign(&license, *rootCert2, rootPrivkey2)
 

@@ -75,10 +75,7 @@ func createLicenseSubcommand() *cli.Command {
 				return err
 			}
 
-			l := license.New(
-				license.Header{Version: "1"},
-				payload,
-			)
+			l := license.New(payload)
 
 			err = license.Sign(&l, *signingCert, signingKey)
 			if err != nil {

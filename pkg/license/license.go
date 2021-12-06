@@ -27,7 +27,14 @@ var (
 
 // New creates a new license instance.
 // This function also sets the created date in the payload to `time.Now()`
-func New(h Header, p Payload) license {
+func New(p Payload) license {
+	h := Header{
+		Version: 1,
+	}
+	return newLicense(h, p)
+}
+
+func newLicense(h Header, p Payload) license {
 	p.Created = now()
 	return license{Header: h, Payload: p}
 }
@@ -99,7 +106,7 @@ func Verify(r io.Reader, rootCert x509.Certificate) (license, error) {
 	if err != nil {
 		return license{}, err
 	}
-	return New(header, payload), nil
+	return newLicense(header, payload), nil
 }
 
 // decodePart returns the decoded part as bytes.
@@ -150,7 +157,7 @@ func parsePayload(s string) (Payload, error) {
 type Header struct {
 	// Version represents the license version.
 	// This field enables us to change license handling or format in the future.
-	Version string `json:"version"`
+	Version int `json:"version"`
 	// The signature of the payload.
 	PayloadSignature []byte `json:"payload_signature"`
 	// The certificate with which the signature was calculated.
