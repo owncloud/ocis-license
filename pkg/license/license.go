@@ -177,6 +177,8 @@ type Payload struct {
 	SlaType      string         `json:"sla_type"`
 	Origin       string         `json:"origin"`
 	GracePeriods map[int]string `json:"grace_periods"`
+	NotBefore    time.Time      `json:"not_before"`
+	NotAfter     time.Time      `json:"not_after"`
 	// Additional can hold fields which are not yet defined.
 	Additional map[string]interface{} `json:"additional"`
 }
