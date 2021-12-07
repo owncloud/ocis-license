@@ -201,7 +201,7 @@ type Payload struct {
 	NotBefore    time.Time      `json:"not_before"`
 	NotAfter     time.Time      `json:"not_after"`
 	// Additional can hold fields which are not yet defined.
-	Additional map[string]interface{} `json:"additional"`
+	Additional map[string]interface{} `json:"additional,omitempty"`
 }
 
 // license combines the Header and Payload into one struct.
