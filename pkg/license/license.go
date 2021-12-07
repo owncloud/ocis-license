@@ -19,8 +19,11 @@ const (
 )
 
 var (
-	ErrNotSigned     = errors.New("license is not signed")
-	ErrInvalidFormat = errors.New("invalid license format")
+	ErrNotSigned        = errors.New("license is not signed")
+	ErrInvalidFormat    = errors.New("invalid license format")
+	ErrPeriodNotStarted = errors.New("license period has not started")
+	ErrPeriodPassed     = errors.New("license period has passed")
+	ErrInvalidPeriod    = errors.New("license period is invalid")
 
 	now func() time.Time = time.Now
 )
@@ -107,6 +110,24 @@ func Verify(r io.Reader, rootCert x509.Certificate) (license, error) {
 		return license{}, err
 	}
 	return newLicense(header, payload), nil
+}
+
+func ValidatePeriod(p Payload) error {
+	if p.NotBefore.IsZero() || p.NotAfter.IsZero() {
+		return ErrInvalidPeriod
+	}
+	if p.NotBefore.After(p.NotAfter) {
+		return ErrInvalidPeriod
+	}
+	// Check if license period is in the future
+	if now().Before(p.NotBefore) {
+		return ErrPeriodNotStarted
+	}
+	// or has passed
+	if now().After(p.NotAfter) {
+		return ErrPeriodPassed
+	}
+	return nil
 }
 
 // decodePart returns the decoded part as bytes.
@@ -231,4 +252,8 @@ func (l license) EncodeToString() (string, error) {
 	var sb strings.Builder
 	err := l.Encode(&sb)
 	return sb.String(), err
+}
+
+func (l license) ValidatePeriod() error {
+	return ValidatePeriod(l.Payload)
 }
