@@ -149,9 +149,9 @@ func TestEncode(t *testing.T) {
 	privkey, _ := x509.ParsePKCS8PrivateKey(pkBytes)
 
 	expectedLicense := "" +
-		"eyJ2ZXJzaW9uIjoxLCJwYXlsb2FkX3NpZ25hdHVyZSI6ImhmTWlxWEZnTm9x" +
-		"ck1zelZ1RXBiTXhCK01DbWRYUDA1YzNvVXZGUEdwWXlnMnFuU2hFcVdxRmNn" +
-		"TWY0UWhiYTY1SEh0bU0yYy9EcC94WWVhMWRRNERRPT0iLCJjZXJ0aWZpY2F0" +
+		"eyJ2ZXJzaW9uIjoxLCJwYXlsb2FkX3NpZ25hdHVyZSI6ImdNZnpDQUJqQlpn" +
+		"b3AxazFPNHFIejNFSEN4bVgwdEMzTkJMbFU0Sm82OGZPRXhudHB5YVBjRHEx" +
+		"NGhrOUdMcUtERWw3T1QwdjI1ZnRTbEx5NlNoOERRPT0iLCJjZXJ0aWZpY2F0" +
 		"ZSI6Ik1JSUJIRENCejZBREFnRUNBZ0VCTUFVR0F5dGxjREFXTVJRd0VnWURW" +
 		"UVFERXd0MFpYTjBjM1ZpYW1WamREQWVGdzB5TVRFeE1qVXhNVE0xTXpkYUZ3" +
 		"MHpNVEV4TWpVeE1UTTFNemRhTUJZeEZEQVNCZ05WQkFNVEMzUmxjM1J6ZFdK" +
@@ -166,7 +166,7 @@ func TestEncode(t *testing.T) {
 		"xOjAwIiwiZmVhdHVyZXMiOm51bGwsInNsYV90eXBlIjoiIiwib3JpZ2luIjo" +
 		"iIiwiZ3JhY2VfcGVyaW9kcyI6bnVsbCwibm90X2JlZm9yZSI6IjAwMDEtMDE" +
 		"tMDFUMDA6MDA6MDBaIiwibm90X2FmdGVyIjoiMDAwMS0wMS0wMVQwMDowMDo" +
-		"wMFoiLCJhZGRpdGlvbmFsIjpudWxsfQ=="
+		"wMFoifQ=="
 
 	now = func() time.Time { return time.Unix(1637842335, 0) }
 	license := New(Payload{ID: "f62ffd0c-604c-426b-966f-16533b6292f0"})
@@ -371,5 +371,59 @@ func TestVerify_WithNilReader(t *testing.T) {
 
 	if _, err := Verify(nil, *cert); err == nil {
 		t.Error("Expected Verify with a nil reader to return an error.")
+	}
+}
+
+func TestValidatePeriod(t *testing.T) {
+	now = func() time.Time { return time.Now() }
+	tests := []struct {
+		notBefore   time.Time
+		notAfter    time.Time
+		expectedErr error
+	}{
+		// notBefore < notAfter
+		{
+			notBefore:   time.Now(),
+			notAfter:    time.Now().Add(time.Hour * 240),
+			expectedErr: nil,
+		},
+		// No 'notAfter' date
+		{
+			notBefore:   time.Now(),
+			expectedErr: nil,
+		},
+		// notBefore > notAfter
+		{
+			notBefore: time.Now().Add(time.Hour * 10),
+			// substract ten days
+			notAfter:    time.Now().Add(time.Hour),
+			expectedErr: ErrInvalidPeriod,
+		},
+		// No 'notBefore' date
+		{
+			notAfter:    time.Now().Add(time.Hour * 10),
+			expectedErr: ErrInvalidPeriod,
+		},
+		{
+			notBefore:   time.Now().AddDate(0, 0, -2),
+			notAfter:    time.Now().AddDate(0, 0, -1),
+			expectedErr: ErrPeriodPassed,
+		},
+	}
+
+	for _, tt := range tests {
+		p := Payload{NotBefore: tt.notBefore, NotAfter: tt.notAfter}
+		if err := ValidatePeriod(p); !errors.Is(err, tt.expectedErr) {
+			t.Errorf("Expected the error %s got %s", tt.expectedErr, err)
+		}
+	}
+}
+
+func TestLicenseVerifyPeriod(t *testing.T) {
+	now = func() time.Time { return time.Now() }
+	license := New(Payload{NotBefore: time.Now(), NotAfter: time.Now().Add(time.Hour * 10)})
+
+	if err := license.ValidatePeriod(); err != nil {
+		t.Errorf("license.ValidatePeriod failed: %s", err.Error())
 	}
 }

@@ -19,11 +19,10 @@ const (
 )
 
 var (
-	ErrNotSigned        = errors.New("license is not signed")
-	ErrInvalidFormat    = errors.New("invalid license format")
-	ErrPeriodNotStarted = errors.New("license period has not started")
-	ErrPeriodPassed     = errors.New("license period has passed")
-	ErrInvalidPeriod    = errors.New("license period is invalid")
+	ErrNotSigned     = errors.New("license is not signed")
+	ErrInvalidFormat = errors.New("invalid license format")
+	ErrPeriodPassed  = errors.New("license period has passed")
+	ErrInvalidPeriod = errors.New("license period is invalid")
 
 	now func() time.Time = time.Now
 )
@@ -113,19 +112,17 @@ func Verify(r io.Reader, rootCert x509.Certificate) (license, error) {
 }
 
 func ValidatePeriod(p Payload) error {
-	if p.NotBefore.IsZero() || p.NotAfter.IsZero() {
+	if p.NotBefore.IsZero() {
 		return ErrInvalidPeriod
 	}
-	if p.NotBefore.After(p.NotAfter) {
-		return ErrInvalidPeriod
-	}
-	// Check if license period is in the future
-	if now().Before(p.NotBefore) {
-		return ErrPeriodNotStarted
-	}
-	// or has passed
-	if now().After(p.NotAfter) {
+	// Check if license period has passed
+	// NotAfter can be "zero" when we want to have non expiring licenses
+	// E.g. for non-commercial community licenses
+	if !p.NotAfter.IsZero() && now().After(p.NotAfter) {
 		return ErrPeriodPassed
+	}
+	if !p.NotAfter.IsZero() && p.NotBefore.After(p.NotAfter) {
+		return ErrInvalidPeriod
 	}
 	return nil
 }
