@@ -187,16 +187,32 @@ type Header struct {
 // using the certificate from the header.
 // The values can be trusted when the signature was verified.
 type Payload struct {
-	ID           string         `json:"id"`
-	Type         string         `json:"type"`
-	Environment  string         `json:"environment"`
-	Created      time.Time      `json:"created"`
-	Features     []string       `json:"features"`
-	SlaType      string         `json:"sla_type"`
-	Origin       string         `json:"origin"`
+	ID string `json:"id"`
+	// The type of the license e.g. 'commercial' or 'non-commercial' etc.
+	Type string `json:"type"`
+	// The target environment for the license e.g. 'production' or 'staging' etc.
+	Environment string `json:"environment"`
+	// The time of the creation
+	Created time.Time `json:"created"`
+	// The limit of users
+	// This field can be nil. A nil value means it's unrestricted.
+	MaxUsers *int `json:"max_users"`
+	// The licensed features e.g. 'core', 'full-text-search', etc.
+	Features []string `json:"features"`
+	// The sla type e.g. '24x7' or '9x5'
+	SLAType string `json:"sla_type"`
+	// The origin of the license. I.e. who issued the license.
+	Origin string `json:"origin"`
+	// The license receiver
+	LicenseeName string `json:"licensee_name"`
+	// The possible grace periods after the expiration of the license.
+	// The key is the order of the periods. I.e. '1' is the first period
+	// '2' is the second etc.
 	GracePeriods map[int]string `json:"grace_periods"`
-	NotBefore    time.Time      `json:"not_before"`
-	NotAfter     time.Time      `json:"not_after"`
+	// The start time of the license.
+	NotBefore time.Time `json:"not_before"`
+	// The end time of the license.
+	NotAfter time.Time `json:"not_after"`
 	// Additional can hold fields which are not yet defined.
 	Additional map[string]interface{} `json:"additional,omitempty"`
 }
